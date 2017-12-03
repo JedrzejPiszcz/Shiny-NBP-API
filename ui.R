@@ -10,13 +10,21 @@ shinyUI(
                #                 style = "margin:5px 20px"))
                ),
     sidebarPanel(
-      selectInput("carrierName", 
-                  label = "Select carrier:",
-                  choices = chosenCarrier$name,
-                  selected = chosenCarrier$name[1],
-                  multiple = T),
-      uiOutput("delayRange"),
-      numericInput("distance_val", label = "Flight distance longer than (in miles)", value = 500)
+       selectInput("currenciesByNameAndCode", 
+                   label = "Select currency by name:",
+                   choices = Currencies$nameAndCode,
+                   selected = Currencies$nameAndCode[1],
+                   multiple = T),
+       dateRangeInput("dateRange", 
+                      label = "Select date range:", 
+                      start = "2010-01-01", 
+                      end = Sys.Date()),
+       radioButtons("tableSelection",
+                    label = "Select type of course",
+                    choices = Tables, 
+                    #selected = Tables[1],
+                    inline = TRUE)
+      #uiOutput("delayRange"),
     ),
     mainPanel(
       tabsetPanel(
