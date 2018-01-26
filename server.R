@@ -5,44 +5,91 @@ library(DT)
 
 shinyServer(function(input, output, session) {
   
-  filteredData <- reactive({
-    finalResult %>% 
-    filter(nameAndCode %in% input$currenciesByNameAndCode) %>%
-    filter(table %in% input$tableSelection)
+  
+  filteredCurrencies<-reactive({
+   
+    temp<-Currencies %>% 
+      filter(table %in% input$tableSelection)
+    temp<-temp[order(temp$nameAndCode),]
+    
+    return(temp)
   })
   
-  # output$delayRange <- renderUI({
-  #   
-  #   max_delay <- max(tmpData()$dep_delay)
-  #   
-  #   sliderInput('delayFlightRange',
-  #               label = "Choose minutes range of delayed flights:",
-  #               min = 0, max = max_delay,
-  #               value = c(0, 1000), step = 10)
-  # })
+  freshDataInDateRange<-reactive({
+    
+    finalResult<-getDataFromDateRange(validStartDate = as.Date(input$dateRange[1]), validEndDate = as.Date(input$dateRange[2]))
+    finalResult$date<-as.Date(finalResult$date)
+    finalResult$nameAndCode<- paste0(finalResult$currency.code, " | ", finalResult$currency.name)
+    
+    return(finalResult)
+  })
   
-  # dayFilteredData <- reactive({
-  #   tmpData() %>% 
-  #     group_by(name, hour) %>% 
-  #     summarise(delayed_flight_perc = sum(dep_delay > input$delayFlightRange[1] & dep_delay < input$delayFlightRange[2] & distance > input$distance_val) / 
-  #                 sum(distance > input$distance_val))
-  # })
+  filteredData <- reactive({
+    tempData<-NA
+    if(nrow(freshDataInDateRange())>=0){ 
+      tempData<-freshDataInDateRange()
+    }else{
+      tempData<-finalResult
+    }
+
+    temp<- tempData %>%
+      filter(table %in% input$tableSelection) %>%
+      filter(nameAndCode %in% input$currenciesByNameAndCode)
+    
+    return(temp)
+  })
   
-  output$ddelay_plot <- renderPlot({
-
-    ggplot(filteredData(), aes(x = as.Date(date), y = currency.mid, colour = currency.code)) + 
-      geom_line(alpha=.9, size =1) + 
-      scale_x_date("month") + 
-      ylab("Calculated Average Course") + 
-      xlab("")
-
+  rm(finalResult)
+  
+  output$currenciesByNameAndCode <-renderUI({
+    
+    temp<-filteredCurrencies()
+    
+    selectInput("currenciesByNameAndCode", 
+                 label = "Select currency by name:",
+                 choices = temp$nameAndCode,
+                 selected = temp$nameAndCode[1],
+                 multiple = T)
+    
+  })
+  
+  output$courseTypeSelection <- renderUI({
+    
+    acceptableTypes<-filteredData()[which(filteredData()$table %in% input$tableSelection),c("currency.mid", "currency.bid", "currency.ask")]
+    selectableTypes<-list()
+    if(!any(is.na(acceptableTypes$currency.mid))){selectableTypes<-c(selectableTypes, "currency.mid")}
+    if(!any(is.na(acceptableTypes$currency.ask))){selectableTypes<-c(selectableTypes, "currency.ask")}
+    if(!any(is.na(acceptableTypes$currency.bid))){selectableTypes<-c(selectableTypes, "currency.bid")}
+    
+    
+    radioButtons("courseTypeSelection",
+                 label = "Select type of course",
+                 choices = selectableTypes, 
+                 inline = TRUE)
+  })
+  
+  output$coursePlot <- renderPlotly({
+    dataToPlot<-filteredData()
+    
+    if("currency.mid" %in% input$courseTypeSelection){
+      p<-plot_ly(data = dataToPlot, x = ~date, y = ~currency.mid, color = ~currency.code) %>%
+        add_lines()
+    }
+    if("currency.bid" %in% input$courseTypeSelection){
+      p<-plot_ly(data = dataToPlot, x = ~date, y = ~currency.bid, color = ~currency.code) %>%
+        add_lines()
+    }
+    if("currency.ask" %in% input$courseTypeSelection){
+      p<-plot_ly(data = dataToPlot, x = ~date, y = ~currency.ask, color = ~currency.code) %>%
+        add_lines()
+    }
+    
+    return(p)
   })
   
   output$table <- renderDataTable({
     datatable(filteredData())
   })
   
-  output$info <- renderText({
-    paste0("x=", input$plot_hover$x, "\ny=", input$plot_hover$y)
-  })
+
 })

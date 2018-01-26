@@ -1,5 +1,8 @@
-
-
+# rm(list=ls())     #czyści workspace
+# wd<-"C:/GIT/R_wd/Shiny-NBP-API" #ustawić working directory
+# if(getwd()!=wd){setwd(wd)}
+# env_ZIPCMD<-"C:/Rtools/bin/zip"                           #nalezy ustawic sciezke do pliku zip w pakiecie rtools
+# if(Sys.getenv("R_ZIPCMD")!=env_ZIPCMD){Sys.setenv(R_ZIPCMD = env_ZIPCMD)}
 
 library(data.table)
 library(RCurl)
@@ -9,6 +12,7 @@ library(mailR)
 library(tseries)
 library(ggplot2)
 library(forecast)
+library(plotly)
 
 getVaildateDates<-function(startDate, endDate){}
 
@@ -83,7 +87,7 @@ tryCatch({
     return(NA)
   }
   )
-}
+} #rewrite to get just one or multiple selected currencies
 
 getDataFromDateRange<-function(validStartDate, validEndDate){
 
@@ -113,13 +117,10 @@ for(i in 1:length(tables))
 
 Result<-as.data.frame(Result)
 
+num_cols<-c("currency.mid", "currency.ask", "currency.bid")
 
+Result[,num_cols] = apply(Result[,num_cols], 2, function(x) as.numeric(as.character(x)))
 
 return(Result)
 }
 
-finalResult<-getDataFromDateRange(validStartDate = validStartDate, validEndDate = validEndDate)
-
-finalResult$nameAndCode<- paste0(finalResult$currency.code, " | ", finalResult$currency.name)
-Currencies<-finalResult[!duplicated(finalResult$currency.code), c("currency.code", "currency.name", "nameAndCode")]
-Currencies<-Currencies[order(Currencies$nameAndCode),]
